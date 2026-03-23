@@ -157,7 +157,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="Your_GEMNINI_API_KEY",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Look at this receipt image. Is the image clear and legible enough to read the store name, date, and total amount? Reply ONLY with JSON: {\\\"quality\\\": \\\"pass\\\" or \\\"fail\\\", \\\"reason\\\": \\\"string\\\"}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
