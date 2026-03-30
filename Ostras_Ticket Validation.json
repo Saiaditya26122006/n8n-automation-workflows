@@ -1,1364 +1,34 @@
 {
-  "name": "Ostras_Ticket Validation",
   "nodes": [
     {
       "parameters": {
-        "operation": "get",
-        "tableId": "tickets",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "id",
-              "keyValue": "={{ $json.body.record.id }}"
-            }
-          ]
-        }
-      },
-      "id": "b074647a-fb05-4232-b209-846ee25b307a",
-      "name": "Check Ticket Status",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -9040,
-        2928
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "ZeqT2OGChzLVMK10",
-          "name": "Supabase account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": "pending",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "4f332ca5-0284-4313-8add-a5b4a9ff0b45",
-      "name": "Status Is Pending?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -8816,
-        2928
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"message\": \"already processed\"\n}",
-        "options": {}
-      },
-      "id": "ceebaecd-de6f-4020-b96b-3b7ee7254ecd",
-      "name": "Already Processed Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        -8592,
-        3024
-      ]
-    },
-    {
-      "parameters": {
-        "url": "={{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
-      },
-      "id": "6d9b626a-43fe-4c90-9033-8c6c5559e447",
-      "name": "Download Receipt Image",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -8144,
-        2768
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}",
-              "rightValue": 2,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "5aa4c7ff-d8b0-4e2c-a8f3-56fedf17aabd",
-      "name": "Product Image Needed?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -7920,
-        2768
-      ]
-    },
-    {
-      "parameters": {
-        "url": "={{ $('Supabase Ticket Trigger').first().json.body.record.barcode_url || 'https://placeholder.com' }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
-      },
-      "id": "ac68a1ac-db8a-4f1b-86e4-f64e0bd43ce3",
-      "name": "Download Product Image",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -7696,
-        2672
-      ],
-      "alwaysOutputData": false,
-      "retryOnFail": true,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="Your_GEMNINI_API_KEY",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Look at this receipt image. Is the image clear and legible enough to read the store name, date, and total amount? Reply ONLY with JSON: {\\\"quality\\\": \\\"pass\\\" or \\\"fail\\\", \\\"reason\\\": \\\"string\\\"}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {}
-      },
-      "id": "f9fae257-cc04-4972-9d5f-a5192a8e1adf",
-      "name": "Fraud Check A - Image Quality",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -7248,
-        2768
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": false,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.candidates[0].content.parts[0].text }}",
-              "rightValue": "pass",
-              "operator": {
-                "type": "string",
-                "operation": "contains"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "ce377091-fecb-408c-b8e2-55558af4990b",
-      "name": "Quality Pass?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -6576,
-        2400
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Look at this image. Is this a physical receipt or a digital screenshot of a receipt? Reply ONLY with JSON: {\\\"type\\\": \\\"physical\\\" or \\\"screenshot\\\", \\\"reason\\\": \\\"string\\\"}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "id": "1945471d-38c3-4a94-8d5b-8fd5bce405a5",
-      "name": "Fraud Check B - Screenshot Detection",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -6128,
-        2336
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.candidates[0].content.parts[0].text }}",
-              "rightValue": "physical",
-              "operator": {
-                "type": "string",
-                "operation": "contains"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "298b8427-53d6-4d1f-9b93-113bead8942f",
-      "name": "Is Physical?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -5680,
-        2256
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Look at this image. Is this a physical receipt or a digital screenshot of a receipt? Reply ONLY with JSON: {\\\"type\\\": \\\"physical\\\" or \\\"screenshot\\\", \\\"reason\\\": \\\"string\\\"}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "id": "1d264081-6f4b-4dce-b2a7-c7565ec0951e",
-      "name": "Fraud Check C - Authenticity",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -5232,
-        2192
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Look at this image. Is this a physical receipt or a digital screenshot of a receipt? Reply ONLY with JSON: {\\\"type\\\": \\\"physical\\\" or \\\"screenshot\\\", \\\"reason\\\": \\\"string\\\"}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "id": "5792d772-0777-49af-aec8-0c7f48b2eb97",
-      "name": "Extract Receipt Data for Hash",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -4560,
-        2096
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst text = $input.first().json.candidates[0].content.parts[0].text;\nconst cleaned = text.replace(/```json|```/g, '').trim();\nconst d = JSON.parse(cleaned);\nconst raw = `${d.store_name}|${d.receipt_date}|${d.total_amount}|${d.receipt_number}`;\nconst hash = crypto.createHash('sha256').update(raw).digest('hex');\nreturn [{ json: { hash, store_name: d.store_name, receipt_date: d.receipt_date, total_amount: d.total_amount, receipt_number: d.receipt_number }}];"
-      },
-      "id": "7bcd2bc5-82a5-40e0-9c5a-49d654b35585",
-      "name": "Generate Hash",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -4112,
-        2016
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "receipt_hashes",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "hash",
-              "condition": "eq",
-              "keyValue": "={{ $json.hash }}"
-            }
-          ]
-        }
-      },
-      "id": "6fbf2fbf-5540-4139-b297-2046bd65fa65",
-      "name": "Check Hash in Database",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -3888,
-        2016
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{$json.length > 0}}",
-              "operator": {
-                "type": "boolean",
-                "operation": "false",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "598201a6-3c87-4276-aebd-5db7c6ae3aa1",
-      "name": "Duplicate?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -3664,
-        2016
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "receipt_hashes",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "hash",
-              "fieldValue": "={{ $('Generate Hash').first().json.hash }}"
-            },
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            }
-          ]
-        }
-      },
-      "id": "2fae869c-2140-4c11-801b-4361caed27f5",
-      "name": "Insert Receipt Hash",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -3440,
-        1920
-      ],
-      "retryOnFail": false,
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "processed_tickets",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "user_id",
-              "condition": "eq",
-              "keyValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            }
-          ]
-        }
-      },
-      "id": "3198cf6e-1994-4fbf-9e20-8e6f8daa3beb",
-      "name": "Get User Tickets",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -3216,
-        1920
-      ],
-      "alwaysOutputData": true,
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst count = items.filter(i => i.json.user_id).length;\nreturn [{ json: { dailyCount: count, shouldStop: count > 5, decision: count > 5 ? 'stop' : 'proceed' }}];"
-      },
-      "id": "90649048-0841-4076-ad49-6bb4984d15cb",
-      "name": "Check Velocity",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -2992,
-        1920
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.shouldStop }}",
-              "rightValue": false,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "92571444-cfb1-42e9-972d-38899a956d8d",
-      "name": "Velocity OK?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -2768,
-        1920
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "manual_review_queue",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "reason",
-              "fieldValue": "VELOCITY_LIMIT"
-            }
-          ]
-        }
-      },
-      "id": "4e6828bf-6e2b-4094-8968-869c3e295c48",
-      "name": "Insert Manual Review",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        368,
-        2480
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\"contents\":[{\"parts\":[{\"text\":\"Extract ALL data from this receipt. Reply ONLY as JSON no markdown no backticks: {\\\"receipt_date\\\":\\\"YYYY-MM-DD\\\",\\\"receipt_time\\\":\\\"HH:MM:SS\\\",\\\"store_name\\\":\\\"string\\\",\\\"store_location\\\":\\\"string\\\",\\\"store_country\\\":\\\"string\\\",\\\"receipt_number\\\":\\\"string\\\",\\\"total_amount\\\":0.00,\\\"currency\\\":\\\"string\\\",\\\"line_items\\\":[{\\\"name\\\":\\\"string\\\",\\\"quantity\\\":1,\\\"price\\\":0.00}],\\\"confidence\\\":95}\"},{\"file_data\":{\"mime_type\":\"image/jpeg\",\"file_uri\":\"{{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}\"}}]}]}",
-        "options": {}
-      },
-      "id": "9f9217c4-e979-4859-b2f8-eb69696f1d95",
-      "name": "Full Receipt Extraction",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -2320,
-        1824
-      ],
-      "retryOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const text = $input.first().json.candidates[0].content.parts[0].text;\nconst cleaned = text.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\nreturn [{ json: { extractedReceipt: parsed, confidence: parsed.confidence } }];"
-      },
-      "id": "ab64f613-580f-49a7-9d39-9a1737c55ca7",
-      "name": "Parse Receipt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -1872,
-        1712
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.extractedReceipt.confidence }}",
-              "rightValue": 74,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "09732183-4dbb-4e43-90b0-7491f3f9b1d1",
-      "name": "Confidence OK?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -1648,
-        1712
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "LOW_CONFIDENCE"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, el recibo está borroso. ¿Podrías enviar una imagen más clara? ¡Gracias!"
-            },
-            {
-              "fieldId": "gemini_confidence",
-              "fieldValue": "={{ $('Parse Receipt').first().json.confidence || null }}"
-            }
-          ]
-        }
-      },
-      "id": "2d33ef49-4c74-40e1-8146-aea611a7406e",
-      "name": "Insert Low Confidence Rejection",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        2176
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}",
-              "rightValue": 2,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "f0cae851-3232-4bc1-9ba4-52d9998befae",
-      "name": "Is Flow 2?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -1424,
-        1632
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const ticket = $('Supabase Ticket Trigger').first().json.body.record;\nconst extracted = $('Parse Receipt').first().json.extractedReceipt;\nconst submittedAt = new Date(ticket.submitted_at);\nconst receiptDate = new Date(extracted.receipt_date + 'T' + (extracted.receipt_time || '23:59:59'));\n\nconst invalidStoreTypes = [\n  'el corte ingles', 'restaurant', 'restaurante', 'farmacia',\n  'pharmacy', 'gasolinera', 'gas station', 'bar ', 'cafe ',\n  'cafeteria', 'cafè', 'mcdonald', 'burger', 'pizz', 'kebab',\n  'panaderia', 'panadería', 'pasteleria', 'pastelería',\n  'drogueria', 'droguería', 'brico', 'ferreteria', 'ferretería',\n  'zara', 'primark', 'decathlon', 'ikea', 'leroy', 'fnac',\n  'mediamarkt', 'worten', 'optica', 'óptica', 'clinica', 'clínica',\n  'freshly', 'jr s.l', 'delivery', 'takeaway', 'comida',\n  'cocina', 'bistro', 'tapas', 'cerveceria', 'cervecería',\n  'heladeria', 'heladería', 'churreria', 'churros', 'sushi',\n  'wok', 'thai', 'chinese', 'indian', 'italiano', 'trattoria'\n];\n\nconst storeName = (extracted.store_name || '').toLowerCase();\n\nif (!storeName || storeName === 'null' || storeName === '')\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET',\n    message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n  }}];\n\nconst isInvalidStoreType = invalidStoreTypes.some(s => storeName.includes(s));\nif (isInvalidStoreType)\n  return [{ json: { approved: false, reason: 'INVALID_STORE',\n    message: 'Hola 👋, solo aceptamos tickets de supermercados. ¡Gracias!'\n  }}];\n\nconst storeLocation = (extracted.store_location || '').toLowerCase();\nconst storeCountry = (extracted.store_country || '').toLowerCase();\nconst currency = (extracted.currency || '').toLowerCase();\nconst spainKeywords = ['spain', 'españa', 'esp', ', es'];\nconst isSpain =\n  spainKeywords.some(k => storeLocation.includes(k)) ||\n  spainKeywords.some(k => storeCountry.includes(k)) ||\n  currency === 'eur' || currency === '€';\n\nif (!isSpain)\n  return [{ json: { approved: false, reason: 'NOT_SPAIN',\n    message: 'Hola 👋, solo aceptamos tickets de supermercados. ¡Gracias!'\n  }}];\n\nif (!extracted.receipt_date || extracted.receipt_date === 'null' || extracted.receipt_date === '')\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET',\n    message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n  }}];\n\nif (!extracted.total_amount || extracted.total_amount === 0)\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET',\n    message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n  }}];\n\nconst diffHours = (submittedAt - receiptDate) / 3600000;\n\nif (diffHours < -2)\n  return [{ json: { approved: false, reason: 'FUTURE_DATE',\n    message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n  }}];\n\nif (diffHours > 24)\n  return [{ json: { approved: false, reason: 'OUTSIDE_24H',\n    message: 'Hola 👋, el ticket debe enviarse dentro de las 24h posteriores a la compra. ¡Gracias!'\n  }}];\n\nreturn [{ json: {\n  approved: true,\n  points: 2,\n  flow: 1,\n  store_name: extracted.store_name,\n  receipt_date: extracted.receipt_date,\n  hours_since_purchase: Math.round(diffHours * 10) / 10\n}}];"
-      },
-      "id": "be212208-e04b-415b-99ba-e213f9be4fed",
-      "name": "Flow 1 Logic",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        144,
-        1872
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\n\n// If data comes from Merge Product Data (already structured)\nif (item.extractedProduct) {\n  return [{ json: { extractedProduct: item.extractedProduct }}];\n}\n\n// If data comes directly from Gemini (has candidates)\nif (item.candidates && item.candidates[0]) {\n  const text = item.candidates[0].content.parts[0].text;\n  const cleaned = text.replace(/```json|```/g,'').trim();\n  return [{ json: { extractedProduct: JSON.parse(cleaned) }}];\n}\n\n// Fallback\nreturn [{ json: { extractedProduct: item }}];"
-      },
-      "id": "9ff3bcf5-040f-40ca-b386-d21226b84c19",
-      "name": "Parse Product",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -752,
-        1488
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.extractedProduct.tampering_detected }}",
-              "rightValue": false,
-              "operator": {
-                "type": "boolean",
-                "operation": "false",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "id-2",
-              "leftValue": "={{ $json.extractedProduct.barcode_confidence }}",
-              "rightValue": 74,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "56d57cf5-9ffc-4f83-a211-051efcf69d0c",
-      "name": "Product Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -528,
-        1488
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "PRODUCT_INVALID"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, la fecha de caducidad y código de barras deben ser bien visibles. ¡Gracias!"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "75645d23-7ad0-409c-b9c9-a90d96ce3c69",
-      "name": "Reject Product Issues",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        1728
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "=https://world.openfoodfacts.org/api/v0/product/3017620422003.json",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "3ad80fa6-48a0-4045-8ffd-bf5e0246eb28",
-      "name": "GTIN Lookup OpenFoodFacts",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -304,
-        1424
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": 1,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "c4944bfc-a81d-41bc-9508-8741f5678472",
-      "name": "GTIN Found?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -80,
-        1424
-      ]
-    },
-    {
-      "parameters": {
-        "url": "=https://api.upcitemdb.com/prod/trial/lookup?upc={{ $('Parse Product').first().json.extractedProduct.barcode_gtin }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "32e35740-9c89-4b40-af1f-339932a3234b",
-      "name": "GTIN Lookup UPCItemDB",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        1040,
-        2496
-      ],
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "const ticket = $('Supabase Ticket Trigger').first().json.body.record;\nconst extracted = $('Parse Receipt').first().json.extractedReceipt;\nconst product = $('Parse Product').first().json.extractedProduct;\nconst receiptDate = new Date(extracted.receipt_date);\nconst expiryDate = new Date(product.expiry_date);\nconst submittedAt = new Date(ticket.submitted_at);\n\nif ((submittedAt - receiptDate) / 3600000 > 24)\n  return [{ json: { approved: false, reason: 'OUTSIDE_24H',\n    message: 'Hola 👋, el ticket debe enviarse dentro de las 24h posteriores a la compra. ¡Gracias!'\n  }}];\n\nconst daysToExpiry = (expiryDate - receiptDate) / 86400000;\n\nif (daysToExpiry > 5 || daysToExpiry < 0)\n  return [{ json: { approved: false, reason: 'EXPIRY_OUT_OF_RANGE',\n    message: 'Hola 👋, los puntos son solo para productos que caducan en <5 días de la compra. ¡Gracias!'\n  }}];\n\nfunction sim(s1, s2) {\n  if (!s1 || !s2) return 0;\n  const w1 = s1.toLowerCase().split(' ');\n  const w2 = s2.toLowerCase().split(' ');\n  return w1.filter(w => w2.includes(w)).length / Math.max(w1.length, w2.length);\n}\n\nconst hasGTIN = product.barcode_gtin && product.barcode_gtin.trim() !== '';\nlet matchedProduct = 'fresh_produce_no_barcode';\n\nif (hasGTIN) {\n  let productNames = [];\n  try {\n    const offResult = $('GTIN Lookup OpenFoodFacts').first().json;\n    if (offResult.status === 1 && offResult.product) {\n      productNames.push(offResult.product.product_name);\n      productNames.push(offResult.product.brands);\n    }\n  } catch(e) {}\n  productNames.push(product.product_name_visible);\n  productNames.push(product.brands);\n  productNames = productNames.filter(Boolean);\n  const items = extracted.line_items || [];\n  const match = items.find(i =>\n    productNames.some(n => sim(i.name, n) >= 0.75)\n  );\n  if (!match)\n    return [{ json: { approved: false, reason: 'PRODUCT_NOT_ON_RECEIPT',\n      message: 'Hola 👋, hemos revisado tu ticket y no encontramos el producto indicado en él. Por ahora, no podemos validarlo. ¡Gracias igualmente por participar!'\n    }}];\n  matchedProduct = match.name;\n}\n\nconst pts = {0:5, 1:4, 2:3, 3:2, 4:1}[Math.round(daysToExpiry)] || 0;\nreturn [{ json: {\n  approved: true,\n  points: pts,\n  flow: 2,\n  matched_product: matchedProduct,\n  days_to_expiry: Math.round(daysToExpiry)\n}}];"
-      },
-      "id": "1cd9d8da-d749-4dfe-88db-fe2d1944e6f0",
-      "name": "Flow 2 Logic",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        144,
-        1328
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "Sent to manual review",
-        "options": {}
-      },
-      "id": "cbdbacfd-9873-4ab7-bc84-457fb51f8ca5",
-      "name": "Stop Manual Review",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        1264,
-        2096
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.approved }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "792ed84e-e995-44ab-a699-f99526f46ea1",
-      "name": "Approved?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        368,
-        1328
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "approved"
-            },
-            {
-              "fieldId": "points_awarded",
-              "fieldValue": "={{ $json.points }}"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            },
-            {
-              "fieldId": "submitted_at",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submitted_at }}"
-            }
-          ]
-        }
-      },
-      "id": "9958bf62-94b6-4119-a621-0cfc5e670eaf",
-      "name": "Insert Approved Ticket",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        1424
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "tableId": "user_points",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "points",
-              "fieldValue": "={{ $json.points_awarded }}"
-            },
-            {
-              "fieldId": "type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type === 2 ? 'rescued_food' : 'receipt' }}"
-            },
-            {
-              "fieldId": "awarded_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "13e77d30-0db6-4b9c-9cad-446de07dd58e",
-      "name": "Insert User Points",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        816,
-        1424
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "={{ $json.reason }}"
-            },
-            {
-              "fieldId": "rejection_message",
-              "fieldValue": "={{ $json.message }}"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "9db1bd18-e7c0-48ac-b740-1faf99fc04c9",
-      "name": "Insert Rejected Ticket",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        1232
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Read the barcode in this image. Reply ONLY as JSON: {\\\"barcode_gtin\\\":\\\"string\\\",\\\"barcode_confidence\\\":95}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.barcode_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {}
-      },
-      "id": "a1817782-f14c-4bfe-aa46-9e7bb5bd6496",
-      "name": "Extract Barcode",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -1200,
-        1488
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyB_2dbHW6QUdGiivOCR7YGSSCAwD_ScJsM",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Read the expiry date on this product. Reply ONLY as JSON: {\\\"expiry_date\\\":\\\"YYYY-MM-DD\\\",\\\"expiry_confidence\\\":95,\\\"tampering_detected\\\":false}\"\n        },\n        {\n          \"file_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"file_uri\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.expiry_url }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
-        "options": {}
-      },
-      "id": "24a5d233-988b-4475-b33a-cccf959aa9a3",
-      "name": "Extract Expiry",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -1200,
-        1840
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const barcodeText = $('Extract Barcode').first().json.candidates[0].content.parts[0].text;\nconst expiryText = $('Extract Expiry').first().json.candidates[0].content.parts[0].text;\n\nconst b = JSON.parse(barcodeText.replace(/```json|```/g,'').trim());\nconst e = JSON.parse(expiryText.replace(/```json|```/g,'').trim());\n\n// If no expiry found, use today + 1 day as default for fresh produce\nconst expiryDate = e.expiry_date || new Date(Date.now() + 86400000).toISOString().split('T')[0];\n\nreturn [{ json: { \n  extractedProduct: {\n    barcode_gtin: b.barcode_gtin,\n    barcode_confidence: b.barcode_confidence || 0,\n    expiry_date: expiryDate,\n    expiry_confidence: e.expiry_confidence || 50,\n    tampering_detected: e.tampering_detected || false\n  }\n}}];"
-      },
-      "id": "b9d5b779-b6e1-43bc-a12a-d6aa13d64f1a",
-      "name": "Merge Product Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -976,
-        1488
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "BLURRY_IMAGE"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, el recibo está borroso. ¿Podrías enviar una imagen más clara? ¡Gracias!"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "9099dd10-4c31-4090-a8f5-22ab31c990a8",
-      "name": "Insert Rejected Ticket - Quality",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        608,
-        3200
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "SCREENSHOT_DETECTED"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, de momento no podemos validar tickets digitales, pero estamos trabajando para habilitarlo pronto. ¡Gracias por tu paciencia!"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "11d455fc-8b75-480b-847a-85649f341563",
-      "name": "Insert Rejected Ticket - Screenshot",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        608,
-        2960
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "DUPLICATE_TICKET"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, este ticket ya lo subiste antes. Por cada ticket único obtienes 2 puntos. ¡Gracias!"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "9c5d97da-9463-42a5-b3b3-1ded7c57c235",
-      "name": "Insert Rejected Ticket - Duplicate",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        2672
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_reason",
-              "fieldValue": "VELOCITY_LIMIT"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "Hola 👋, detectamos varios tickets del mismo súper el mismo día, lo que parece actividad fraudulenta. Por seguridad, no podemos validarlos. ¡Gracias!"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "0b79ae56-76d4-44b6-aa66-3a5e4351e49c",
-      "name": "Insert Rejected Ticket - Velocity",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        592,
-        2480
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
-    },
-    {
-      "parameters": {
         "httpMethod": "POST",
-        "path": "ostras-mvp-webhook",
-        "responseMode": "responseNode",
+        "path": "ostras-v1-webhook",
         "options": {}
       },
-      "id": "0e12f8e2-407b-4c2b-a4ca-a597156785ca",
-      "name": "Supabase Ticket Trigger",
+      "id": "af784e7b-30f9-41f7-be28-622628ec16ae",
+      "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -9264,
-        2928
+        -1568,
+        320
       ],
-      "webhookId": "86aa43a8-5496-4298-b9f3-af4de5ede624",
-      "disabled": true
+      "webhookId": "ostras-v1-webhook"
     },
     {
       "parameters": {
-        "jsCode": "const record = $('Supabase Ticket Trigger').first().json.body.record;\nconst submissionType = record.submission_type;\nconst receiptUrl = record.receipt_url;\nconst barcodeUrl = record.barcode_url;\nconst expiryUrl = record.expiry_url;\n\n// Flow 1 - only receipt required\nif (submissionType === 1) {\n  if (!receiptUrl || receiptUrl === '' || receiptUrl === null) {\n    return [{ json: {\n      imagesValid: false,\n      reason: 'MISSING_RECEIPT',\n      message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n    }}];\n  }\n}\n\n// Flow 2 - receipt + barcode + expiry required\nif (submissionType === 2) {\n  if (!receiptUrl || receiptUrl === '' || receiptUrl === null) {\n    return [{ json: {\n      imagesValid: false,\n      reason: 'MISSING_RECEIPT',\n      message: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!'\n    }}];\n  }\n  if (!barcodeUrl || barcodeUrl === '' || barcodeUrl === null) {\n    return [{ json: {\n      imagesValid: false,\n      reason: 'MISSING_BARCODE',\n      message: 'Hola 👋, la fecha de caducidad y código de barras deben ser bien visibles. ¡Gracias!'\n    }}];\n  }\n  if (!expiryUrl || expiryUrl === '' || expiryUrl === null) {\n    return [{ json: {\n      imagesValid: false,\n      reason: 'MISSING_EXPIRY',\n      message: 'Hola 👋, además del código de barras, necesitamos foto clara de la fecha de caducidad corta. ¡Gracias!'\n    }}];\n  }\n}\n\n// All required images present\nreturn [{ json: { imagesValid: true, submissionType }}];"
+        "jsCode": "const record = $('Webhook Trigger').first().json.body.record;\nconst submissionType = record.submission_type;\nconst receiptUrl = record.receipt_url;\nconst barcodeUrl = record.barcode_url;\nconst expiryUrl = record.expiry_url;\n\nconst hasReceipt = !!(receiptUrl && receiptUrl !== '' && receiptUrl !== null);\nconst hasBarcode = !!(barcodeUrl && barcodeUrl !== '' && barcodeUrl !== null);\nconst hasExpiry = !!(expiryUrl && expiryUrl !== '' && expiryUrl !== null);\n\nconst MESSAGES = {\n  MISSING_RECEIPT: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!',\n  BARCODE_ONLY: 'Hola 👋, solo subiste el código de barras, no el ticket completo. ¡Inténtalo de nuevo!',\n  NO_RECEIPT_ONLY_PRODUCTS: 'Hola 👋, vemos los productos, pero necesitamos también el ticket de compra para validar el rescate. Sin ticket no podemos otorgar los puntos. ¡Gracias!',\n  MISSING_BARCODE: 'Hola 👋, la fecha de caducidad y código de barras deben ser bien visibles. ¡Gracias!',\n  MISSING_EXPIRY: 'Hola 👋, además del código de barras, necesitamos foto clara de la fecha de caducidad corta. ¡Gracias!'\n};\n\nif (submissionType === 1) {\n  if (!hasReceipt) {\n    return [{ json: { imagesValid: false, reason: 'MISSING_RECEIPT', rejection_message: MESSAGES.MISSING_RECEIPT, processing_stage: 'missing_images' } }];\n  }\n}\n\nif (submissionType === 2) {\n  if (!hasReceipt && hasBarcode && !hasExpiry) {\n    return [{ json: { imagesValid: false, reason: 'BARCODE_ONLY', rejection_message: MESSAGES.BARCODE_ONLY, processing_stage: 'missing_images' } }];\n  }\n  if (!hasReceipt && (hasBarcode || hasExpiry)) {\n    return [{ json: { imagesValid: false, reason: 'NO_RECEIPT_ONLY_PRODUCTS', rejection_message: MESSAGES.NO_RECEIPT_ONLY_PRODUCTS, processing_stage: 'missing_images' } }];\n  }\n  if (!hasReceipt) {\n    return [{ json: { imagesValid: false, reason: 'MISSING_RECEIPT', rejection_message: MESSAGES.MISSING_RECEIPT, processing_stage: 'missing_images' } }];\n  }\n  if (!hasBarcode) {\n    return [{ json: { imagesValid: false, reason: 'MISSING_BARCODE', rejection_message: MESSAGES.MISSING_BARCODE, processing_stage: 'missing_images' } }];\n  }\n  if (!hasExpiry) {\n    return [{ json: { imagesValid: false, reason: 'MISSING_EXPIRY', rejection_message: MESSAGES.MISSING_EXPIRY, processing_stage: 'missing_images' } }];\n  }\n}\n\nreturn [{ json: { imagesValid: true, submissionType } }];"
       },
-      "id": "5f4a20e3-2ad1-4242-830c-e94fad9c951e",
+      "id": "7aebc8d2-e780-4f3c-9e7d-64ea2766230b",
       "name": "Check Required Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -8592,
-        2832
-      ]
+        -1360,
+        304
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -1370,7 +40,7 @@
           },
           "conditions": [
             {
-              "id": "id-1",
+              "id": "cond-002",
               "leftValue": "={{ $json.imagesValid }}",
               "rightValue": true,
               "operator": {
@@ -1383,174 +53,317 @@
         },
         "options": {}
       },
-      "id": "70c60b3e-806a-4007-8e7d-cb73b4d5c0fd",
+      "id": "43ddb46b-e554-4e90-97f2-3fe526cd64f5",
       "name": "Images Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -8368,
-        2832
+        -1120,
+        272
       ]
-    },
-    {
-      "parameters": {
-        "tableId": "processed_tickets",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
-            },
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "rejected"
-            },
-            {
-              "fieldId": "rejection_message_en",
-              "fieldValue": "={{ $('Check Required Images').first().json.message }}"
-            },
-            {
-              "fieldId": "processed_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "29a65fb2-ea16-4620-b228-693b4bd5a30c",
-      "name": "Insert Missing Images Rejection",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        608,
-        3440
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
-        }
-      }
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://fcm.googleapis.com/v1/projects/oysters---correct/messages:send",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=YOUR_GEMINI_API_KEY",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": {\n    \"token\": \"{{ $('Check Ticket Status').first().json.fcm_token }}\",\n    \"notification\": {\n      \"title\": \"Imágenes faltantes ❌\",\n      \"body\": \"{{ $('Check Required Images').first().json.message }}\"\n    },\n    \"data\": {\n      \"ticket_id\": \"{{ $('Supabase Ticket Trigger').first().json.body.record.id }}\",\n      \"status\": \"rejected\",\n      \"reason\": \"{{ $('Check Required Images').first().json.reason }}\"\n    }\n  }\n}",
+        "jsonBody": "={\"contents\":[{\"parts\":[{\"text\":\"Extract ALL data from this supermarket receipt. Reply ONLY as JSON, no markdown, no backticks, no extra text. Date format MUST be YYYY-MM-DD. Time format MUST be HH:MM:SS. If time is not visible use 00:00:00. If any field is not visible use null.\\n\\nRequired format:\\n{\\\"receipt_date\\\":\\\"YYYY-MM-DD\\\",\\\"receipt_time\\\":\\\"HH:MM:SS\\\",\\\"store_name\\\":\\\"string\\\",\\\"store_location\\\":\\\"string\\\",\\\"store_country\\\":\\\"string\\\",\\\"receipt_number\\\":\\\"string\\\",\\\"total_amount\\\":0.00,\\\"currency\\\":\\\"string\\\",\\\"line_items\\\":[{\\\"name\\\":\\\"string\\\",\\\"quantity\\\":1,\\\"price\\\":0.00}],\\\"confidence\\\":95}\"},{\"file_data\":{\"mime_type\":\"image/jpeg\",\"file_uri\":\"{{ $('Webhook Trigger').first().json.body.record.receipt_url }}\"}}]}]}",
         "options": {}
       },
-      "id": "0b2a38a4-fa62-4080-8a00-bf6bb4b56bf2",
-      "name": "Send Missing Images Notification",
+      "id": "8eedba64-88b7-4f77-aca7-1662d081ca91",
+      "name": "Gemini Receipt Extraction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1072,
-        2688
+        -928,
+        144
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nif (item.error) {\n  return [{ json: {\n    extractionError: true,\n    reason: 'RECEIPT_READ_ERROR',\n    rejection_message: 'Hola 👋, no pudimos leer tu ticket. Por favor sube una foto más clara. ¡Gracias!',\n    processing_stage: 'gemini_extraction_error'\n  }}];\n}\n\nlet raw;\ntry {\n  raw = item.candidates[0].content.parts[0].text;\n} catch(e) {\n  return [{ json: {\n    extractionError: true,\n    reason: 'RECEIPT_READ_ERROR',\n    rejection_message: 'Hola 👋, no pudimos leer tu ticket. Por favor sube una foto más clara. ¡Gracias!',\n    processing_stage: 'gemini_extraction_error'\n  }}];\n}\n\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch(e) {\n  return [{ json: {\n    extractionError: true,\n    reason: 'RECEIPT_READ_ERROR',\n    rejection_message: 'Hola 👋, no pudimos leer tu ticket. Por favor sube una foto más clara. ¡Gracias!',\n    processing_stage: 'gemini_extraction_error'\n  }}];\n}\n\nlet receiptDate = parsed.receipt_date || '';\nif (receiptDate.includes('/')) {\n  const parts = receiptDate.split('/');\n  if (parts.length === 3 && parts[0].length === 2) {\n    receiptDate = `${parts[2]}-${parts[1]}-${parts[0]}`;\n  }\n}\n\nconst receiptTime = parsed.receipt_time || '00:00:00';\n\nlet receiptDatetimeUTC = null;\ntry {\n  const localDt = new Date(`${receiptDate}T${receiptTime}`);\n  if (!isNaN(localDt.getTime())) {\n    receiptDatetimeUTC = new Date(localDt.getTime() - (2 * 60 * 60 * 1000)).toISOString();\n  }\n} catch(e) {}\n\nreturn [{ json: {\n  extractionError: false,\n  receipt_date: receiptDate,\n  receipt_time: receiptTime,\n  receipt_datetime_utc: receiptDatetimeUTC,\n  store_name: parsed.store_name || null,\n  store_location: parsed.store_location || null,\n  store_country: parsed.store_country || null,\n  receipt_number: parsed.receipt_number || null,\n  total_amount: parsed.total_amount || null,\n  currency: parsed.currency || null,\n  line_items: parsed.line_items || [],\n  confidence: parsed.confidence || 0\n}}];"
+      },
+      "id": "9e5195d3-2eb9-4634-9e81-ab55ded19224",
+      "name": "Normalize And Parse Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-003",
+              "leftValue": "={{ $json.extractionError }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2afe1c10-fcf6-4afb-a22c-03576ba13450",
+      "name": "Extraction Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -464,
+        240
       ]
     },
     {
       "parameters": {
-        "tableId": "workflow_outputs",
-        "fieldsUi": {
-          "fieldValues": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "fieldId": "original_ticket_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}"
+              "id": "cond-004",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 74,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "46ae474d-7468-4fb3-b4e8-8a4d1068dd30",
+      "name": "Confidence OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "reason",
+              "value": "LOW_CONFIDENCE",
+              "type": "string"
             },
             {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}"
+              "id": "a2",
+              "name": "rejection_message",
+              "value": "Hola 👋, el recibo está borroso. ¿Podrías enviar una imagen más clara? ¡Gracias!",
+              "type": "string"
             },
             {
-              "fieldId": "firebase_user_id",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.firebase_user_id }}"
-            },
-            {
-              "fieldId": "submission_type",
-              "fieldValue": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "final_status",
-              "fieldValue": "={{ $json.approved === true ? 'approved' : 'rejected' }}"
-            },
-            {
-              "fieldId": "final_reason",
-              "fieldValue": "={{ $json.reason || $json.rejection_reason || 'none' }}"
-            },
-            {
-              "fieldId": "message_en",
-              "fieldValue": "={{ $json.message_en || $json.rejection_message_en || 'none' }}"
-            },
-            {
-              "fieldId": "message_es",
-              "fieldValue": "={{ $json.message_es || $json.rejection_message_es || 'none' }}"
-            },
-            {
-              "fieldId": "points_awarded",
-              "fieldValue": "={{ $json.points || $json.points_awarded || 0 }}"
-            },
-            {
-              "fieldId": "store_name",
-              "fieldValue": "={{ $('Parse Receipt').first()?.json?.extractedReceipt?.store_name || 'unknown' }}"
-            },
-            {
-              "fieldId": "receipt_date",
-              "fieldValue": "={{ $('Parse Receipt').first()?.json?.extractedReceipt?.receipt_date || 'unknown' }}"
-            },
-            {
-              "fieldId": "flow",
-              "fieldValue": "={{ $json.flow || $('Supabase Ticket Trigger').first().json.body.record.submission_type }}"
-            },
-            {
-              "fieldId": "matched_product",
-              "fieldValue": "={{ $json.matched_product || 'none' }}"
-            },
-            {
-              "fieldId": "days_to_expiry",
-              "fieldValue": "={{ $json.days_to_expiry || null }}"
-            },
-            {
-              "fieldId": "gemini_confidence",
-              "fieldValue": "={{ $('Parse Receipt').first()?.json?.confidence || null }}"
-            },
-            {
-              "fieldId": "full_extracted_receipt",
-              "fieldValue": "={{ JSON.stringify($('Parse Receipt').first()?.json?.extractedReceipt || {}) }}"
-            },
-            {
-              "fieldId": "full_extracted_product",
-              "fieldValue": "={{ $if($(\"Parse Product\").isExecuted, JSON.stringify($('Parse Product').first()?.json?.extractedProduct || {}), '{}') }}"
-            },
-            {
-              "fieldId": "created_at",
-              "fieldValue": "={{ new Date().toISOString() }}"
+              "id": "a3",
+              "name": "processing_stage",
+              "value": "low_confidence",
+              "type": "string"
             }
           ]
-        }
+        },
+        "includeOtherFields": true,
+        "options": {}
       },
-      "id": "daa4e38b-43bf-46b6-8db3-64768975a50d",
-      "name": "Log Approval Output",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "id": "4a3f5498-a589-4f81-9c15-1f0998c3deef",
+      "name": "Reject - Low Confidence",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        1264,
-        2496
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-005",
+              "leftValue": "={{ $('Webhook Trigger').first().json.body.record.submission_type }}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ec2156d4-91a6-48bb-823d-09d35b7c7cff",
+      "name": "Is Flow 2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $('Webhook Trigger').first().json.body.record;\nconst extracted = $('Normalize And Parse Receipt').first().json;\n\nconst MESSAGES = {\n  OUTSIDE_24H: 'Hola 👋, el ticket debe enviarse dentro de las 24h posteriores a la compra. ¡Gracias!',\n  FUTURE_DATE: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!',\n  INCOMPLETE_TICKET: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!',\n  INVALID_STORE: 'Hola 👋, solo aceptamos tickets de supermercados. ¡Gracias!'\n};\n\nconst invalidStores = [\n  'restaurant', 'restaurante', 'farmacia', 'pharmacy', 'gasolinera',\n  'gas station', 'bar ', 'cafe ', 'cafeteria', 'mcdonald', 'burger',\n  'pizz', 'kebab', 'panaderia', 'pasteleria', 'drogueria', 'brico',\n  'ferreteria', 'zara', 'primark', 'decathlon', 'ikea', 'leroy',\n  'fnac', 'mediamarkt', 'worten', 'optica', 'clinica', 'freshly',\n  'delivery', 'takeaway', 'bistro', 'tapas', 'cerveceria', 'heladeria',\n  'sushi', 'wok', 'thai', 'el corte ingles'\n];\n\nconst storeName = (extracted.store_name || '').toLowerCase();\n\nif (!storeName || storeName === 'null' || storeName === '') {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_1_logic' } }];\n}\n\nif (invalidStores.some(s => storeName.includes(s))) {\n  return [{ json: { approved: false, reason: 'INVALID_STORE', rejection_message: MESSAGES.INVALID_STORE, processing_stage: 'flow_1_logic' } }];\n}\n\nif (!extracted.receipt_date || extracted.receipt_date === 'null') {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_1_logic' } }];\n}\n\nif (!extracted.total_amount || extracted.total_amount === 0) {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_1_logic' } }];\n}\n\nif (!extracted.receipt_datetime_utc) {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_1_logic' } }];\n}\n\nconst submittedAt = new Date(ticket.submitted_at);\nconst receiptUTC = new Date(extracted.receipt_datetime_utc);\nconst diffHours = (submittedAt - receiptUTC) / 3600000;\n\nif (diffHours < -2) {\n  return [{ json: { approved: false, reason: 'FUTURE_DATE', rejection_message: MESSAGES.FUTURE_DATE, processing_stage: 'flow_1_logic' } }];\n}\n\nif (diffHours > 24) {\n  return [{ json: { approved: false, reason: 'OUTSIDE_24H', rejection_message: MESSAGES.OUTSIDE_24H, processing_stage: 'flow_1_logic' } }];\n}\n\nreturn [{ json: {\n  approved: true,\n  points_awarded: 2,\n  flow: 1,\n  store_name: extracted.store_name,\n  receipt_date: extracted.receipt_date,\n  hours_since_purchase: Math.round(diffHours * 10) / 10,\n  processing_stage: 'flow_1_approved'\n}}];"
+      },
+      "id": "99ce5545-0122-4b63-8f4f-287d6abde601",
+      "name": "Flow 1 Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        144
       ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "QgQn9uUMHLN2eFnj",
-          "name": "Supabase Processing"
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"contents\":[{\"parts\":[{\"text\":\"Read the barcode in this image. Reply ONLY as JSON, no markdown, no backticks:\\n{\\\"barcode_gtin\\\":\\\"string or null\\\",\\\"barcode_confidence\\\":95,\\\"tampering_detected\\\":false}\"},{\"file_data\":{\"mime_type\":\"image/jpeg\",\"file_uri\":\"{{ $('Webhook Trigger').first().json.body.record.barcode_url }}\"}}]}]}",
+        "options": {}
+      },
+      "id": "cabbbbf5-595c-45a9-a43b-b78aa24af53e",
+      "name": "Extract Barcode",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        -32
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"contents\":[{\"parts\":[{\"text\":\"Read the expiry date on this product. Date format MUST be YYYY-MM-DD. Reply ONLY as JSON, no markdown, no backticks:\\n{\\\"expiry_date\\\":\\\"YYYY-MM-DD or null\\\",\\\"expiry_confidence\\\":95,\\\"tampering_detected\\\":false}\"},{\"file_data\":{\"mime_type\":\"image/jpeg\",\"file_uri\":\"{{ $('Webhook Trigger').first().json.body.record.expiry_url }}\"}}]}]}",
+        "options": {}
+      },
+      "id": "cfc47c3c-dced-44b7-9df1-2fa0968298fa",
+      "name": "Extract Expiry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        -224
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let barcodeData = { barcode_gtin: null, barcode_confidence: 0, tampering_detected: false };\nlet expiryData = { expiry_date: null, expiry_confidence: 0, tampering_detected: false };\n\ntry {\n  const bt = $('Extract Barcode').first().json.candidates[0].content.parts[0].text;\n  barcodeData = JSON.parse(bt.replace(/```json|```/g,'').trim());\n} catch(e) {}\n\ntry {\n  const et = $('Extract Expiry').first().json.candidates[0].content.parts[0].text;\n  expiryData = JSON.parse(et.replace(/```json|```/g,'').trim());\n} catch(e) {}\n\nlet expiryDate = expiryData.expiry_date || null;\nif (expiryDate && expiryDate.includes('/')) {\n  const parts = expiryDate.split('/');\n  if (parts.length === 3 && parts[0].length === 2) {\n    expiryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;\n  }\n}\n\nreturn [{ json: {\n  barcode_gtin: barcodeData.barcode_gtin || null,\n  barcode_confidence: barcodeData.barcode_confidence || 0,\n  barcode_tampering: barcodeData.tampering_detected || false,\n  expiry_date: expiryDate,\n  expiry_confidence: expiryData.expiry_confidence || 0,\n  expiry_tampering: expiryData.tampering_detected || false\n}}];"
+      },
+      "id": "24d6015c-298f-4d78-803c-11b1888930ff",
+      "name": "Merge Product Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -128
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://world.openfoodfacts.org/api/v0/product/{{ $json.barcode_gtin }}.json",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
         }
       },
+      "id": "24614fe8-2376-4fde-8835-78dba1755b6a",
+      "name": "GTIN Lookup OpenFoodFacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        -144
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.upcitemdb.com/prod/trial/lookup?upc={{ $('Merge Product Data').first().json.barcode_gtin }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "1b9a6e77-1707-4701-bf2b-c933dd369bfa",
+      "name": "GTIN Lookup UPCItemDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1008,
+        -224
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $('Webhook Trigger').first().json.body.record;\nconst extracted = $('Normalize And Parse Receipt').first().json;\nconst product = $('Merge Product Data').first().json;\n\nconst MESSAGES = {\n  OUTSIDE_24H: 'Hola 👋, el ticket debe enviarse dentro de las 24h posteriores a la compra. ¡Gracias!',\n  ALREADY_EXPIRED: 'Hola 👋, No Podemos Dar Puntos Por Productos Que Hayas Comprado Ya Caducados ¡Gracias!',\n  EXPIRY_OUT_OF_RANGE: 'Hola 👋, los puntos son solo para productos que caducan en menos de 5 días de la compra. ¡Gracias!',\n  PRODUCT_NOT_ON_RECEIPT: 'Hola 👋, hemos revisado tu ticket y no encontramos el producto indicado en él. Por ahora, no podemos validarlo. ¡Gracias igualmente por participar!',\n  INCOMPLETE_TICKET: 'Hola 👋, necesitamos ver el ticket completo y fecha de compra. ¡Gracias!',\n  INVALID_STORE: 'Hola 👋, solo aceptamos tickets de supermercados. ¡Gracias!'\n};\n\nconst invalidStores = [\n  'restaurant', 'restaurante', 'farmacia', 'pharmacy', 'gasolinera',\n  'bar ', 'cafe ', 'cafeteria', 'mcdonald', 'burger', 'pizz', 'kebab',\n  'panaderia', 'zara', 'primark', 'decathlon', 'ikea', 'el corte ingles'\n];\n\nconst storeName = (extracted.store_name || '').toLowerCase();\nif (!storeName || storeName === 'null') {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_2_logic' } }];\n}\nif (invalidStores.some(s => storeName.includes(s))) {\n  return [{ json: { approved: false, reason: 'INVALID_STORE', rejection_message: MESSAGES.INVALID_STORE, processing_stage: 'flow_2_logic' } }];\n}\n\nif (!extracted.receipt_datetime_utc) {\n  return [{ json: { approved: false, reason: 'INCOMPLETE_TICKET', rejection_message: MESSAGES.INCOMPLETE_TICKET, processing_stage: 'flow_2_logic' } }];\n}\n\nconst submittedAt = new Date(ticket.submitted_at);\nconst receiptUTC = new Date(extracted.receipt_datetime_utc);\nconst diffHours = (submittedAt - receiptUTC) / 3600000;\n\nif (diffHours > 24) {\n  return [{ json: { approved: false, reason: 'OUTSIDE_24H', rejection_message: MESSAGES.OUTSIDE_24H, processing_stage: 'flow_2_logic' } }];\n}\n\nif (!product.expiry_date) {\n  return [{ json: { approved: false, reason: 'MISSING_EXPIRY', rejection_message: 'Hola 👋, además del código de barras, necesitamos foto clara de la fecha de caducidad corta. ¡Gracias!', processing_stage: 'flow_2_logic' } }];\n}\n\nconst receiptDate = new Date(extracted.receipt_date + 'T00:00:00');\nconst expiryDate = new Date(product.expiry_date + 'T00:00:00');\nconst daysToExpiry = (expiryDate - receiptDate) / 86400000;\n\nif (daysToExpiry < 0) {\n  return [{ json: { approved: false, reason: 'ALREADY_EXPIRED', rejection_message: MESSAGES.ALREADY_EXPIRED, processing_stage: 'flow_2_logic' } }];\n}\n\nif (daysToExpiry >= 5) {\n  return [{ json: { approved: false, reason: 'EXPIRY_OUT_OF_RANGE', rejection_message: MESSAGES.EXPIRY_OUT_OF_RANGE, processing_stage: 'flow_2_logic' } }];\n}\n\nfunction similarity(s1, s2) {\n  if (!s1 || !s2) return 0;\n  const w1 = s1.toLowerCase().split(' ');\n  const w2 = s2.toLowerCase().split(' ');\n  return w1.filter(w => w2.includes(w)).length / Math.max(w1.length, w2.length);\n}\n\nconst hasGTIN = product.barcode_gtin && product.barcode_gtin.trim() !== '';\nlet matchedProduct = 'fresh_produce_no_barcode';\n\nif (hasGTIN) {\n  let productNames = [];\n  try {\n    const off = $('GTIN Lookup OpenFoodFacts').first().json;\n    if (off.status === 1 && off.product) {\n      if (off.product.product_name) productNames.push(off.product.product_name);\n      if (off.product.brands) productNames.push(off.product.brands);\n    }\n  } catch(e) {}\n  try {\n    const upc = $('GTIN Lookup UPCItemDB').first().json;\n    if (upc.items && upc.items[0]) {\n      if (upc.items[0].title) productNames.push(upc.items[0].title);\n      if (upc.items[0].brand) productNames.push(upc.items[0].brand);\n    }\n  } catch(e) {}\n  productNames = productNames.filter(Boolean);\n  const items = extracted.line_items || [];\n  const match = items.find(i => productNames.some(n => similarity(i.name, n) >= 0.75));\n  if (!match && productNames.length > 0) {\n    return [{ json: { approved: false, reason: 'PRODUCT_NOT_ON_RECEIPT', rejection_message: MESSAGES.PRODUCT_NOT_ON_RECEIPT, processing_stage: 'flow_2_logic' } }];\n  }\n  if (match) matchedProduct = match.name;\n}\n\nconst pointsMap = { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1 };\nconst pts = pointsMap[Math.round(daysToExpiry)] ?? 1;\n\nreturn [{ json: {\n  approved: true,\n  points_awarded: pts,\n  flow: 2,\n  matched_product: matchedProduct,\n  days_to_expiry: Math.round(daysToExpiry),\n  store_name: extracted.store_name,\n  receipt_date: extracted.receipt_date,\n  hours_since_purchase: Math.round(diffHours * 10) / 10,\n  processing_stage: 'flow_2_approved'\n}}];"
+      },
+      "id": "28691613-0914-478f-97b0-f0fcdfaae837",
+      "name": "Flow 2 Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $('Webhook Trigger').first().json.body.record;\nconst extracted = $('Normalize And Parse Receipt').isExecuted\n  ? $('Normalize And Parse Receipt').first().json\n  : {};\n\nconst sources = ['Flow 1 Logic','Flow 2 Logic','Reject - Low Confidence','Check Required Images','Normalize And Parse Receipt'];\n\nlet result = null;\nfor (const src of sources) {\n  try {\n    const n = $(src);\n    if (n.isExecuted) { result = n.first().json; break; }\n  } catch(e) {}\n}\n\nif (!result) {\n  result = { approved: false, reason: 'UNKNOWN_ERROR', rejection_message: 'Hola 👋, no pudimos procesar tu ticket. Por favor inténtalo de nuevo. ¡Gracias!', processing_stage: 'unknown' };\n}\n\nconst isApproved = result.approved === true;\n\nreturn [{ json: {\n  timestamp: new Date().toISOString(),\n  ticket_id: ticket.id || '',\n  user_id: ticket.user_id || '',\n  firebase_user_id: ticket.firebase_user_id || '',\n  submission_type: ticket.submission_type || '',\n  status: isApproved ? 'approved' : 'rejected',\n  rejection_reason: isApproved ? '' : (result.reason || 'UNKNOWN'),\n  rejection_message: isApproved ? '' : (result.rejection_message || ''),\n  points_awarded: isApproved ? (result.points_awarded || 0) : 0,\n  flow: result.flow || '',\n  store_name: extracted.store_name || result.store_name || '',\n  receipt_date: extracted.receipt_date || result.receipt_date || '',\n  hours_since_purchase: result.hours_since_purchase || '',\n  days_to_expiry: result.days_to_expiry || '',\n  matched_product: result.matched_product || '',\n  gemini_confidence: extracted.confidence || '',\n  receipt_url: ticket.receipt_url || '',\n  processing_stage: result.processing_stage || 'unknown'\n}}];"
+      },
+      "id": "b8a815fe-a291-4536-a37f-4514cde3cffe",
+      "name": "Prepare Output Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        208
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -1558,47 +371,35 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8",
-          "mode": "list",
-          "cachedResultName": "Ostras Analytics",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8/edit?usp=drivesdk"
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
         },
         "sheetName": {
           "__rl": true,
           "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Approved",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8/edit#gid=0"
+          "mode": "id"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "timestamp": "={{ new Date().toISOString() }}",
-            "ticket_id": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}",
-            "user_uuid": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}",
-            "firebase_user_id": "={{ $('Supabase Ticket Trigger').first().json.body.record.firebase_user_id }}",
-            "submission_type": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}",
-            "flow": "={{ $if($('Flow 1 Logic').isExecuted, 1, 2) }}",
-            "store_name": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.store_name, 'unknown') }}",
-            "receipt_date": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.receipt_date, 'unknown') }}",
-            "hours_since_purchase": "={{ $if($('Flow 1 Logic').isExecuted, $('Flow 1 Logic').first().json.hours_since_purchase, '') }}",
-            "points_awarded": "={{ $('Insert User Points').first().json.points }}",
-            "total_user_points": "={{ $('Update User Total Points').first().json.total_points || '' }}",
-            "matched_product": "={{ $if($('Flow 2 Logic').isExecuted, $('Flow 2 Logic').first().json.matched_product, 'N/A') }}",
-            "gemini_confidence": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.confidence, '') }}",
-            "days_to_expiry": "={{ $if($('Flow 2 Logic').isExecuted, $('Flow 2 Logic').first().json.days_to_expiry, 'N/A') }}",
-            "receipt_url": "={{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}",
-            "store_location": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.store_location, '') }}",
-            "store_country": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.store_country, '') }}",
-            "total_amount": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.total_amount, '') }}",
-            "currency": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.currency, '') }}",
-            "receipt_basket": "={{ $if($('Parse Receipt').isExecuted, JSON.stringify($('Parse Receipt').first().json.extractedReceipt.line_items), '') }}",
-            "product_gtin": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.barcode, '') }}",
-            "product_name": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.product_name, '') }}",
-            "product_category": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.category, '') }}",
-            "product_expiry_date": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.expiry_date, '') }}",
-            "product_weight": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.weight, '') }}",
-            "product_discounted_price": "={{ $if($('Parse Product').isExecuted, $('Parse Product').first().json.extractedProduct.discounted_price, '') }}"
+            "timestamp": "={{ $json.timestamp }}",
+            "ticket_id": "={{ $json.ticket_id }}",
+            "user_id": "={{ $json.user_id }}",
+            "firebase_user_id": "={{ $json.firebase_user_id }}",
+            "submission_type": "={{ $json.submission_type }}",
+            "status": "={{ $json.status }}",
+            "rejection_reason": "={{ $json.rejection_reason }}",
+            "rejection_message": "={{ $json.rejection_message }}",
+            "points_awarded": "={{ $json.points_awarded }}",
+            "flow": "={{ $json.flow }}",
+            "store_name": "={{ $json.store_name }}",
+            "receipt_date": "={{ $json.receipt_date }}",
+            "hours_since_purchase": "={{ $json.hours_since_purchase }}",
+            "days_to_expiry": "={{ $json.days_to_expiry }}",
+            "matched_product": "={{ $json.matched_product }}",
+            "gemini_confidence": "={{ $json.gemini_confidence }}",
+            "receipt_url": "={{ $json.receipt_url }}",
+            "processing_stage": "={{ $json.processing_stage }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -1621,8 +422,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "user_uuid",
-              "displayName": "user_uuid",
+              "id": "user_id",
+              "displayName": "user_id",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -1641,6 +442,42 @@
             {
               "id": "submission_type",
               "displayName": "submission_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rejection_reason",
+              "displayName": "rejection_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rejection_message",
+              "displayName": "rejection_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "points_awarded",
+              "displayName": "points_awarded",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -1684,33 +521,6 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "points_awarded",
-              "displayName": "points_awarded",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "total_user_points",
-              "displayName": "total_user_points",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "matched_product",
-              "displayName": "matched_product",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
               "id": "days_to_expiry",
               "displayName": "days_to_expiry",
               "required": false,
@@ -1720,256 +530,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "gemini_confidence",
-              "displayName": "gemini_confidence",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "receipt_url",
-              "displayName": "receipt_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "store_location",
-              "displayName": "store_location",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "store_country",
-              "displayName": "store_country",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "total_amount",
-              "displayName": "total_amount",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "currency",
-              "displayName": "currency",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "receipt_basket",
-              "displayName": "receipt_basket",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_gtin",
-              "displayName": "product_gtin",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_name",
-              "displayName": "product_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_category",
-              "displayName": "product_category",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_expiry_date",
-              "displayName": "product_expiry_date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_weight",
-              "displayName": "product_weight",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "product_discounted_price",
-              "displayName": "product_discounted_price",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "id": "670976c6-da74-4dbb-97d7-4cf763a4625b",
-      "name": "Log to Sheets - Approved",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
-        1056,
-        2304
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "iJk6Rjg6s28ahUPK",
-          "name": "Google Sheets account"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8",
-          "mode": "list",
-          "cachedResultName": "Ostras Analytics",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": 1550322960,
-          "mode": "list",
-          "cachedResultName": "Rejected",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12WOIsk1fQip4PzkSlk5oRnNSS3bT2X97wbzOO4ZZcf8/edit#gid=1550322960"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "timestamp": "={{ new Date().toISOString() }}",
-            "ticket_id": "={{ $('Supabase Ticket Trigger').first().json.body.record.id }}",
-            "user_uuid": "={{ $('Supabase Ticket Trigger').first().json.body.record.user_id }}",
-            "firebase_user_id": "={{ $('Supabase Ticket Trigger').first().json.body.record.firebase_user_id }}",
-            "submission_type": "={{ $('Supabase Ticket Trigger').first().json.body.record.submission_type }}",
-            "rejection_reason": "={{ $json.reason || $json.rejection_reason || 'unknown' }}",
-            "rejection_message": "={{ $json.feedback }}",
-            "store_name": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.store_name, 'unknown') }}",
-            "receipt_date": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.extractedReceipt.receipt_date, 'unknown') }}",
-            "gemini_confidence": "={{ $if($('Parse Receipt').isExecuted, $('Parse Receipt').first().json.confidence, '') }}",
-            "receipt_url": "={{ $('Supabase Ticket Trigger').first().json.body.record.receipt_url }}",
-            "processing_stage": "={{ $json.processing_stage\n'flow_logic' }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "timestamp",
-              "displayName": "timestamp",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "ticket_id",
-              "displayName": "ticket_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "user_uuid",
-              "displayName": "user_uuid",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "firebase_user_id",
-              "displayName": "firebase_user_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "submission_type",
-              "displayName": "submission_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "rejection_reason",
-              "displayName": "rejection_reason",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "rejection_message",
-              "displayName": "rejection_message",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "store_name",
-              "displayName": "store_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "receipt_date",
-              "displayName": "receipt_date",
+              "id": "matched_product",
+              "displayName": "matched_product",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -2001,8 +563,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -2010,607 +571,20 @@
         },
         "options": {}
       },
-      "id": "1014191b-1fee-4e76-8c25-2e6887fd28ad",
-      "name": "Log to Sheets - Rejected",
+      "id": "c53f171e-c0fe-46da-b9f4-58d0d7dfb28c",
+      "name": "Write To Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1040,
-        2096
+        2032,
+        320
       ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "iJk6Rjg6s28ahUPK",
-          "name": "Google Sheets account"
-        }
-      },
+      "credentials": {},
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "flow_logic",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "ca682a98-64d7-4b43-8276-27081058ed76",
-      "name": "Add Stage - Flow Logic",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        816,
-        1232
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "quality_check",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "e2aac74e-2d96-4d92-b2f7-cc7cef8a6fc1",
-      "name": "Add Stage - Quality Check",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        832,
-        3200
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "screenshot_detection",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "7b000f2d-cf84-4e5c-865f-2c609deb0c1d",
-      "name": "Add Stage - Screenshot",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        832,
-        2960
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "duplicate_check",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "65e3c487-09aa-4c64-8113-3acdd9a7de86",
-      "name": "Add Stage - Duplicate",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        816,
-        2672
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "velocity_limit",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "dc4a8974-d57c-4d81-8eae-51006ad9afff",
-      "name": "Add Stage - Velocity",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        816,
-        2480
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "low_confidence",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "6c1d7de5-0561-4ce7-afa9-195974f928e8",
-      "name": "Add Stage - Low Confidence",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        816,
-        2160
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "product_validation",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "cc347e58-596f-476d-8275-e40741fab494",
-      "name": "Add Stage - Product Validation",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        816,
-        1728
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "missing_images",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "c0a58243-8f59-4256-a9db-84de2cbbbf10",
-      "name": "Add Stage - Missing Images",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        832,
-        3440
-      ]
-    },
-    {
-      "parameters": {
-        "amount": 2
-      },
-      "id": "4c531dbe-8806-4a0f-b790-46a32c667506",
-      "name": "Wait - Between Fraud A and B",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -6800,
-        2400
-      ],
-      "webhookId": "91aa9110-aa9a-43dd-aa8a-0320812ca576"
-    },
-    {
-      "parameters": {},
-      "id": "134e7f6a-6e1d-411f-9025-9880c675af22",
-      "name": "Wait - Between Fraud C and Extract Hash",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -4784,
-        2096
-      ],
-      "webhookId": "5b29a3ef-6bcd-428e-a964-260e9d3baeac"
-    },
-    {
-      "parameters": {},
-      "id": "8b460255-828b-4600-b4bb-595b59c3585c",
-      "name": "Wait - Between Hash and Full Extraction",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -2544,
-        1824
-      ],
-      "webhookId": "7d3568c5-25ab-46b4-ae24-ccf129e00318"
-    },
-    {
-      "parameters": {
-        "amount": 2
-      },
-      "id": "12d9f76b-2125-4861-af59-f13007f28c50",
-      "name": "Wait - Between Fraud A and B1",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -7552,
-        2960
-      ],
-      "webhookId": "91aa9110-aa9a-43dd-aa8a-0320812ca576"
-    },
-    {
-      "parameters": {
-        "amount": 2
-      },
-      "id": "1cb3e0ae-403b-44a2-9688-7b88ee2bef21",
-      "name": "Wait - Between Fraud A and B2",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -7472,
-        2672
-      ],
-      "webhookId": "91aa9110-aa9a-43dd-aa8a-0320812ca576"
-    },
-    {
-      "parameters": {},
-      "id": "ad783ad6-ce45-4ed7-b8f1-47adf7abaff6",
-      "name": "Wait - Between Physical and Fraud C",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -5456,
-        2192
-      ],
-      "webhookId": "f3dbc12d-7c2b-4a8c-b17a-eefaf948c095"
-    },
-    {
-      "parameters": {},
-      "id": "42556d1e-37e8-4bff-b99e-6b11f90dae94",
-      "name": "Wait - Between Fraud A and B3",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -6352,
-        2336
-      ],
-      "webhookId": "91aa9110-aa9a-43dd-aa8a-0320812ca576"
-    },
-    {
-      "parameters": {
-        "content": "Ignore this \"Insert Manual Review Queue\" error \nbecause i didn't connect it to the supabase for now  "
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        1712,
-        1504
-      ],
-      "typeVersion": 1,
-      "id": "1f20a328-a05a-4816-9a2c-aa97a93c2b6f",
-      "name": "Sticky Note"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.error }}",
-              "operator": {
-                "type": "object",
-                "operation": "exists"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "68505a70-50d1-44b3-9190-ee8f3139b5fe",
-      "name": "Check Fraud A Error",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -7024,
-        2768
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.error }}",
-              "operator": {
-                "type": "object",
-                "operation": "exists"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "e59685b7-0f95-4f41-b65b-eea869667949",
-      "name": "Check Fraud B Error",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -5904,
-        2336
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.error }}",
-              "operator": {
-                "type": "object",
-                "operation": "exists"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "f00b3c49-fb73-4c59-850e-bc0a73350390",
-      "name": "Check Fraud C Error",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -5008,
-        2192
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "reason",
-              "value": "IMAGE_PROCESSING_ERROR",
-              "type": "string"
-            },
-            {
-              "id": "id-2",
-              "name": "rejection_reason",
-              "value": "IMAGE_PROCESSING_ERROR",
-              "type": "string"
-            },
-            {
-              "id": "id-3",
-              "name": "message",
-              "value": "Hola 👋, no pudimos analizar tu imagen. Por favor sube una foto más clara y bien iluminada. ¡Gracias!",
-              "type": "string"
-            },
-            {
-              "id": "id-4",
-              "name": "rejection_message",
-              "value": "Hola 👋, no pudimos analizar tu imagen. Por favor sube una foto más clara y bien iluminada. ¡Gracias!",
-              "type": "string"
-            },
-            {
-              "id": "id-5",
-              "name": "processing_stage",
-              "value": "gemini_api_error",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "386ec9b8-112d-4778-b1c1-b8662b1ad7b5",
-      "name": "Prepare Fraud A-C Error Rejection",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        -4688,
-        2368
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.error }}",
-              "operator": {
-                "type": "object",
-                "operation": "exists"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "61c8df1b-8f57-4ee3-a030-d03e379ac285",
-      "name": "Check Extract Hash Error",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -4336,
-        2096
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "id-1",
-              "leftValue": "={{ $json.error }}",
-              "operator": {
-                "type": "object",
-                "operation": "exists"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "cc63463a-a63e-4657-89de-6abe7219978a",
-      "name": "Check Full Extraction Error",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -2096,
-        1824
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "reason",
-              "value": "RECEIPT_READ_ERROR",
-              "type": "string"
-            },
-            {
-              "id": "id-2",
-              "name": "rejection_reason",
-              "value": "RECEIPT_READ_ERROR",
-              "type": "string"
-            },
-            {
-              "id": "id-3",
-              "name": "message",
-              "value": "Hola 👋, no pudimos leer tu ticket. Por favor sube una foto más clara. ¡Gracias!",
-              "type": "string"
-            },
-            {
-              "id": "id-4",
-              "name": "rejection_message",
-              "value": "Hola 👋, no pudimos leer tu ticket. Por favor sube una foto más clara. ¡Gracias!",
-              "type": "string"
-            },
-            {
-              "id": "id-5",
-              "name": "processing_stage",
-              "value": "gemini_api_error",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "d41c9321-9afb-48ca-ab37-7873792fd318",
-      "name": "Prepare Receipt Read Error Rejection",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        -1872,
-        2336
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "id-1",
-              "name": "processing_stage",
-              "value": "={{ $json.processing_stage }}",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "baacf1a7-6a4a-40cc-b9f9-8a78ff898c5e",
-      "name": "Add Stage - Gemini Error",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        -1648,
-        2464
-      ]
     }
   ],
-  "pinData": {},
   "connections": {
-    "Check Ticket Status": {
-      "main": [
-        [
-          {
-            "node": "Status Is Pending?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Status Is Pending?": {
+    "Webhook Trigger": {
       "main": [
         [
           {
@@ -2618,251 +592,69 @@
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ]
+    },
+    "Check Required Images": {
+      "main": [
         [
           {
-            "node": "Already Processed Response",
+            "node": "Images Valid?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download Receipt Image": {
+    "Images Valid?": {
       "main": [
         [
           {
-            "node": "Product Image Needed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Product Image Needed?": {
-      "main": [
-        [
-          {
-            "node": "Download Product Image",
+            "node": "Gemini Receipt Extraction",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait - Between Fraud A and B1",
+            "node": "Prepare Output Row",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download Product Image": {
+    "Gemini Receipt Extraction": {
       "main": [
         [
           {
-            "node": "Wait - Between Fraud A and B2",
+            "node": "Normalize And Parse Receipt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fraud Check A - Image Quality": {
+    "Normalize And Parse Receipt": {
       "main": [
         [
           {
-            "node": "Check Fraud A Error",
+            "node": "Extraction Error?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Quality Pass?": {
+    "Extraction Error?": {
       "main": [
         [
           {
-            "node": "Wait - Between Fraud A and B3",
+            "node": "Prepare Output Row",
             "type": "main",
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Insert Rejected Ticket - Quality",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fraud Check B - Screenshot Detection": {
-      "main": [
-        [
-          {
-            "node": "Check Fraud B Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Physical?": {
-      "main": [
-        [
-          {
-            "node": "Wait - Between Physical and Fraud C",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Insert Rejected Ticket - Screenshot",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fraud Check C - Authenticity": {
-      "main": [
-        [
-          {
-            "node": "Check Fraud C Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Receipt Data for Hash": {
-      "main": [
-        [
-          {
-            "node": "Check Extract Hash Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate Hash": {
-      "main": [
-        [
-          {
-            "node": "Check Hash in Database",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Hash in Database": {
-      "main": [
-        [
-          {
-            "node": "Duplicate?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Duplicate?": {
-      "main": [
-        [
-          {
-            "node": "Insert Receipt Hash",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Insert Rejected Ticket - Duplicate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Receipt Hash": {
-      "main": [
-        [
-          {
-            "node": "Get User Tickets",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get User Tickets": {
-      "main": [
-        [
-          {
-            "node": "Check Velocity",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Velocity": {
-      "main": [
-        [
-          {
-            "node": "Velocity OK?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Velocity OK?": {
-      "main": [
-        [
-          {
-            "node": "Wait - Between Hash and Full Extraction",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Insert Manual Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Manual Review": {
-      "main": [
-        [
-          {
-            "node": "Insert Rejected Ticket - Velocity",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Full Receipt Extraction": {
-      "main": [
-        [
-          {
-            "node": "Check Full Extraction Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Receipt": {
-      "main": [
         [
           {
             "node": "Confidence OK?",
@@ -2883,18 +675,18 @@
         ],
         [
           {
-            "node": "Insert Low Confidence Rejection",
+            "node": "Reject - Low Confidence",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Low Confidence Rejection": {
+    "Reject - Low Confidence": {
       "main": [
         [
           {
-            "node": "Add Stage - Low Confidence",
+            "node": "Prepare Output Row",
             "type": "main",
             "index": 0
           }
@@ -2928,149 +720,7 @@
       "main": [
         [
           {
-            "node": "Approved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Product": {
-      "main": [
-        [
-          {
-            "node": "Product Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Product Valid?": {
-      "main": [
-        [
-          {
-            "node": "GTIN Lookup OpenFoodFacts",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Reject Product Issues",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Reject Product Issues": {
-      "main": [
-        [
-          {
-            "node": "Add Stage - Product Validation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GTIN Lookup OpenFoodFacts": {
-      "main": [
-        [
-          {
-            "node": "GTIN Found?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GTIN Found?": {
-      "main": [
-        [
-          {
-            "node": "Flow 2 Logic",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "GTIN Lookup UPCItemDB",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GTIN Lookup UPCItemDB": {
-      "main": [
-        [
-          {
-            "node": "Stop Manual Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Flow 2 Logic": {
-      "main": [
-        [
-          {
-            "node": "Approved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Approved?": {
-      "main": [
-        [
-          {
-            "node": "Insert Approved Ticket",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Insert Rejected Ticket",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Approved Ticket": {
-      "main": [
-        [
-          {
-            "node": "Insert User Points",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert User Points": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Approved",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Rejected Ticket": {
-      "main": [
-        [
-          {
-            "node": "Add Stage - Flow Logic",
+            "node": "Prepare Output Row",
             "type": "main",
             "index": 0
           }
@@ -3103,458 +753,65 @@
       "main": [
         [
           {
-            "node": "Parse Product",
+            "node": "GTIN Lookup OpenFoodFacts",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Rejected Ticket - Quality": {
+    "GTIN Lookup OpenFoodFacts": {
       "main": [
         [
           {
-            "node": "Add Stage - Quality Check",
+            "node": "GTIN Lookup UPCItemDB",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Rejected Ticket - Screenshot": {
+    "GTIN Lookup UPCItemDB": {
       "main": [
         [
           {
-            "node": "Add Stage - Screenshot",
+            "node": "Flow 2 Logic",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Rejected Ticket - Duplicate": {
+    "Flow 2 Logic": {
       "main": [
         [
           {
-            "node": "Add Stage - Duplicate",
+            "node": "Prepare Output Row",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Rejected Ticket - Velocity": {
+    "Prepare Output Row": {
       "main": [
         [
           {
-            "node": "Add Stage - Velocity",
+            "node": "Write To Google Sheets",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase Ticket Trigger": {
-      "main": [
-        [
-          {
-            "node": "Check Ticket Status",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Images Valid?": {
-      "main": [
-        [
-          {
-            "node": "Download Receipt Image",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Insert Missing Images Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Required Images": {
-      "main": [
-        [
-          {
-            "node": "Images Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Missing Images Rejection": {
-      "main": [
-        [
-          {
-            "node": "Add Stage - Missing Images",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Already Processed Response": {
+    "Write To Google Sheets": {
       "main": [
         []
-      ]
-    },
-    "Stop Manual Review": {
-      "main": [
-        []
-      ]
-    },
-    "Send Missing Images Notification": {
-      "main": [
-        []
-      ]
-    },
-    "Log Approval Output": {
-      "main": [
-        []
-      ]
-    },
-    "Log to Sheets - Approved": {
-      "main": [
-        [
-          {
-            "node": "Log Approval Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log to Sheets - Rejected": {
-      "main": [
-        [
-          {
-            "node": "Stop Manual Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Flow Logic": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Quality Check": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Screenshot": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Duplicate": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Velocity": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Low Confidence": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Product Validation": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Missing Images": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send Missing Images Notification",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Fraud A and B": {
-      "main": [
-        [
-          {
-            "node": "Quality Pass?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Fraud C and Extract Hash": {
-      "main": [
-        [
-          {
-            "node": "Extract Receipt Data for Hash",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Hash and Full Extraction": {
-      "main": [
-        [
-          {
-            "node": "Full Receipt Extraction",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Fraud A and B1": {
-      "main": [
-        [
-          {
-            "node": "Fraud Check A - Image Quality",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Fraud A and B2": {
-      "main": [
-        [
-          {
-            "node": "Fraud Check A - Image Quality",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Physical and Fraud C": {
-      "main": [
-        [
-          {
-            "node": "Fraud Check C - Authenticity",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait - Between Fraud A and B3": {
-      "main": [
-        [
-          {
-            "node": "Fraud Check B - Screenshot Detection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Fraud A-C Error Rejection": {
-      "main": [
-        [
-          {
-            "node": "Add Stage - Gemini Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Fraud A Error": {
-      "main": [
-        [
-          {
-            "node": "Prepare Fraud A-C Error Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Wait - Between Fraud A and B",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Fraud B Error": {
-      "main": [
-        [
-          {
-            "node": "Prepare Fraud A-C Error Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Is Physical?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Fraud C Error": {
-      "main": [
-        [
-          {
-            "node": "Prepare Fraud A-C Error Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Wait - Between Fraud C and Extract Hash",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Extract Hash Error": {
-      "main": [
-        [
-          {
-            "node": "Prepare Receipt Read Error Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Generate Hash",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Full Extraction Error": {
-      "main": [
-        [
-          {
-            "node": "Prepare Receipt Read Error Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Parse Receipt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Receipt Read Error Rejection": {
-      "main": [
-        [
-          {
-            "node": "Add Stage - Gemini Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Add Stage - Gemini Error": {
-      "main": [
-        [
-          {
-            "node": "Log to Sheets - Rejected",
-            "type": "main",
-            "index": 0
-          }
-        ]
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "callerPolicy": "workflowsFromSameOwner",
-    "timeSavedMode": "fixed",
-    "saveExecutionProgress": true,
-    "binaryMode": "separate",
-    "availableInMCP": false
-  },
-  "versionId": "0ba8f345-8c3e-4fe6-91ec-3c80044e93b8",
+  "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "2c629fa8041b6c6fed44677da43abdeb0e314fef6f752007c317481a5491b6dd"
-  },
-  "id": "32okoPV1PcfKFAos",
-  "tags": []
+  }
 }
